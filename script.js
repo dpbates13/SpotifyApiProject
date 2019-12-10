@@ -21,37 +21,13 @@ function getIds(url) {
         }
         //console.log(database);
         if (responseJson.albums.next !== null) {
-            doIt(responseJson.albums.next);
+            getIds(responseJson.albums.next);
         }
         //return idList;
-    }).then(response => {
-        createIdArray(idList);
-        console.log(idList);
     });
 }
 
-function doIt(next) {
-    fetch(next, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Authorization': bearer
-        }
-    }).then(response => {
-        return response.json();
-        //console.log(response.json());
-    }).then(responseJson => {
-        //let idList = [];
-        for (let i=0; i<responseJson.albums.items.length; i++) {
-            idList.push(responseJson.albums.items[i].id);
-        }
-        //console.log(database);
-        if (responseJson.albums.next !== null) {
-            doIt(responseJson.albums.next);
-        }
-    })
-}
+
 
 function createIdArray(idList) {
     let count = 0;
