@@ -1,9 +1,11 @@
 const url = "https://api.spotify.com/v1/search?q=tag%3Anew&type=album&limit=50";
-const bearer = "Bearer BQC3VkQtTq0LgXwP_U9nT6wH0ehUDSQgfyr0f-r-hl69cdtnxcLU1pco0oW2unUsFf_Gd11Og_a5hw1VhNXMsGasO6dgJXgJfqA1NvLfM45oSR3OoYa1ta0qmiIKgPZuqdDOW94adNl5Lw";
+let bearer = "";
 let idList = [];
 let idArray = [];
 let albumDatabase = [];
 let artistDatabase = {};
+let genreList = [];
+let postedAlbums = [];
 
 function getIds(url) {
     //console.log('getIds GO');
@@ -18,7 +20,7 @@ function getIds(url) {
         //console.log('getIds 1st response GO');
         
         if (response.status !== 200) {
-            if (response.status == 404) {
+            if (response.status == 404 || 401) {
                 resolve(idList);
             }
             else {
@@ -73,33 +75,7 @@ function createIdArray(idList) {
     resolve(idArray);
 })
 }
-/*
-function GetAlbumData(idList, count = 0) {
-    return new Promise((resolve, reject) => {
-        fetch(`https://api.spotify.com/v1/albums/${idList[count]}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': bearer
-            }
-        }).then(response => {
-            const r = response.json();
-            console.log(r);
-            return r;
-        }).then(response => {
-            albumDatabase.push(response);
-            count++;
-            if (count < idList.length) {
-                resolve(GetAlbumData(idList, count));
-            }
-            else {
-                resolve(albumDatabase);
-            }
-        })
-    })
-}
-*/
+
 function createAlbumDatabase(idArray, count = 0) {
     return new Promise((resolve, reject) => {
         fetch(`https://api.spotify.com/v1/albums?ids=${idArray[count]}`, {
@@ -124,50 +100,24 @@ function createAlbumDatabase(idArray, count = 0) {
             }
         })
     })
-    //console.log(idArray[0]);
-    /*for (i = 0; i<idArray.length; i++) {
-        //let query = idArray[i].replace(/,/g, '%');
-        //console.log(query);
-        fetch(`https://api.spotify.com/v1/albums?ids=${idArray[i]}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': bearer
-            }
-    }).then(response => {
-        const r = response.json();
-        //console.log(r);
-        return r;
-    }).then(response => {
-        //const r = response;
-        console.log(response);
-        //albumDatabase.push(response);
-        //console.log(albumDatabase);
-        for (i=0; i<response.length; i++) {
-            console.log(response.albums[i]);
-            albumDatabase.push(response.albums[i]);
-        }
-        //resolve();
-    });
-}*/
+    
 }
 
 function createArtistStrings(data) {
     let strArr = [];
     let artStr = '';
     let count = 0;
-    let tot = 0;
+    //let tot = 0;
     console.log(data[0].albums[0].artists[0].id);
     for (i=0; i<data.length; i++) {
         //console.log('go');
-        tot ++;
-        console.log(tot);
+        //tot ++;
+        //console.log(tot);
         for (j=0; j<data[i].albums.length; j++) {
             //console.log('Go');
             //console.log(data[i].albums[j].artists);
-            console.log(data[i].albums[j]);
-            console.log(`i=${i} and j=${j}`);
+            //console.log(data[i].albums[j]);
+            //console.log(`i=${i} and j=${j}`);
             if (data[i].albums[j] === null) {
                 let poiuoipu = 0;
             }
@@ -206,16 +156,176 @@ function getArtists(data, count = 0) {
         }).then(response => {
             const r =response.json();
             console.log(r);
+            //resolve(r);
             return r;
         }).then(response => {
-            for (i=0; i<response.length; i++) {
-                
+            //console.log(`${response.artists[0].name}`);
+            for (i=0; i<response.artists.length; i++) {
+                //console.log(response.artists[i].name);
+                if (artistDatabase.hasOwnProperty(`${response.artists[i].name}`)) {
+                    let fdsjhf = 0;
+                }
+                else {
+                    artistDatabase[`${response.artists[i].name}`] = response.artists[i].genres;
+                }
+            }
+            count ++;
+            if (count < data.length) {
+                resolve(getArtists(data, count));
+            }
+            else {
+                resolve(artistDatabase);
             }
         })
     })
 }
 
+function addGenreData(genreList) {
+    console.log('addGenreData Go!');
+    console.log(albumDatabase[0].albums[0].genres);
+    for (let i=0; i<albumDatabase.length; i++) {
+        //console.log(albumDatabase[i]);
+        //console.log(albumDatabase[i].albums.length);
+        for (let j=0; j<albumDatabase[i].albums.length; j++) {
+            //console.log(albumDatabase[i].albums[j].artists);
+            for (const artist in albumDatabase[i].albums[j].artists) {
+                //console.log(albumDatabase[i].albums[j].artists[artist].name);
+                albumDatabase[i].albums[j].genres.push(`${genreList[`${albumDatabase[i].albums[j].artists[artist].name}`]}`);
+            }
+        }
+    }
+    return albumDatabase;
+}
+
+function createGenreList() {
+    for (const artist in artistDatabase) {
+        for (j=0; j<artistDatabase[artist].length; j++) {
+            if (genreList.includes(artistDatabase[artist][j]) == false) {
+                genreList.push(artistDatabase[artist][j]);
+            }
+        }
+    }
+}
+
+function getToken() {
+    const data = {grant_type: "client_credentials"};
+    return new Promise((resolve, reject) => {
+        fetch(`https://accounts.spotify.com/api/token`, {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic NWYxNmE2ZjZjZTA2NDBmZTllNTVhNTQ5NTNiOGJlNzY6YWEzMmNhZTEzZjI3NGRjMGE1YWZlNWVmOTVmYWUzYmM="
+            },
+            body: new URLSearchParams(data)
+        }).then(res=>res.json())
+        .then(res=>{
+            bearer = 'Bearer ' + res.access_token;
+          }).then(res=> {
+              resolve(bearer);
+          })
+    })
+}
+
+function displayGenreKeywords() {
+    /*
+    Display list of genre keywords.
+    On click, executes displayAlbums with that keyword as input.
+    */
+   $('.loading').hide();
+   $('.keyGenres').append(`<h1>Please select a genre keyword below</h1>`);
+   const keywords = ['hip hop', 'r&b', 'rap', 'pop', 'dance', 'edm', 'rock', 'indie', 'metal', 'punk', 'folk', 'country', 'christian', 'electronic', 'reggaeton', 'latin', 'classical', 'alternative', 'trap']
+   for (i=0; i<keywords.length; i++) {
+       $('.keyGenres').append(
+           `<li class="key">${keywords[i]}</li>`
+       );
+   }
+   $('.keyGenres').on('click', '.key', function(event) {
+       postedAlbums = [];
+       $('.showAlbums').empty();
+       displayAlbums($(this).html());
+   })
+}
+
+function displayAlbums(keyword = 'rock') {
+    /*
+    Sort through genre list with keyword, create list of genres that have that keyword.
+    For each genre in list, executes generateAlbumsElement using that genreTerm.
+    Make sure to eliminate doubles.
+    Displays all album elements that were generated.
+    */
+   const re = new RegExp(keyword);
+   let listFromKeyword = [];
+   for (i=0; i<genreList.length; i++) {
+       if (genreList[i].search(re) > -1) {
+           listFromKeyword.push(genreList[i]);
+       }
+   }
+   for (p=0; p<listFromKeyword.length; p++) {
+       if (listFromKeyword[p] == keyword) {
+           listFromKeyword.splice(p, 1);
+       }
+   }
+   $('.showAlbums').append(
+       `<h2>Select a subgenre to sort by that subgenre</h2>`
+   );
+   listFromKeyword.push(keyword);
+   console.log(listFromKeyword);
+   
+   for (m=0; m<listFromKeyword.length; m++) {
+       generateAlbumsElement(listFromKeyword[m]);
+       
+   }
+   
+}
+
+function generateAlbumsElement(genreTerm = 'yacht rock') {
+    /*
+    Search through albumDatabase for albums with genreTerm.
+    Create HTML element that displays genreTerm as header with albums and links below.
+    */
+    const re = new RegExp(genreTerm);
+    let genreClassA = genreTerm.replace('&', 'n');
+    let genreCLassF = genreClassA.replace(' ', '-');
+    let genreClass = genreCLassF.replace(' ', '-');
+    console.log(genreClass);
+    $('.showAlbums').append(
+        `<div class="genreDiv ${genreClass}">
+            <h2 class="genreName">${genreTerm}</h2>
+        </div>`
+    )
+    for (i=0; i<albumDatabase.length; i++) {
+        for (j=0; j<albumDatabase[i].albums.length; j++) {
+            for (x=0; x<albumDatabase[i].albums[j].genres.length; x++) {
+                //console.log(albumDatabase[i].albums[j].genres[x]);
+                if (albumDatabase[i].albums[j].genres[x].search(re) > -1) {
+                    //console.log(albumDatabase[i].albums[j].name);
+                    //const id = new RegExp(albumDatabase[i].albums[j].id);
+                    if (postedAlbums.indexOf(albumDatabase[i].albums[j].id) == -1) {
+                        $(`.${genreClass}`).append(
+                            `<img src="${albumDatabase[i].albums[j].images[1].url}">
+                            <a class="album" href="${albumDatabase[i].albums[j].uri}">${albumDatabase[i].albums[j].name}</a>
+                            <p class="artist">${albumDatabase[i].albums[j].artists[0].name}</p>`
+                        );
+                        postedAlbums.push(albumDatabase[i].albums[j].id);
+                    }
+                    
+                }
+            }
+        }
+    }
+    //console.log(postedAlbums);
+}
+
+function clickSubGenre() {
+    $('.showAlbums').on('click', '.genreName', function(event) {
+        postedAlbums = [];
+        $('.showAlbums').empty();
+        generateAlbumsElement($(this).html());
+    })
+}
+
 async function createInitialDatabase() {
+    await getToken();
     const start = await getIds(url);
     const idStrings = await createIdArray(start);
     const dataB = await createAlbumDatabase(idStrings);
@@ -223,25 +333,17 @@ async function createInitialDatabase() {
     const artistStrings = createArtistStrings(dataB);
     console.log(artistStrings);
     const artistGenres = await getArtists(artistStrings);
-    //console.log(artistGenres);
+    console.log(artistGenres);
+    const finalDatabase = addGenreData(artistGenres);
+    console.log(finalDatabase);
+    createGenreList();
+    console.log(genreList);
+    displayGenreKeywords();
+    clickSubGenre();
+    //displayAlbums();
+    //generateAlbumsElement();
 
-    /*GetAlbumData(start)
-    .then(response => {
-        console.log(response);
-    })*/
-    /*
-    createIdArray(start)
-    .then(response => {
-        createAlbumDatabase(response);
-    }).then(response => {
-        console.log(response);
-    })
-    */
-    //start.then(resp => createIdArray(idList))
-    //.then(re => console.log(idArray));
-    //console.log(start);
-    //getIds(url)
-    //.then(resp => createIdArray(idList));
+    
 }
 
 $(createInitialDatabase);
